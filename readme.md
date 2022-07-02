@@ -4,8 +4,7 @@ Quickjs bindings for the [mongoose](https://mongoose.ws/) c library.
 
 ## Implemented features
 
-- [x] Http server
-- [ ] Https server
+- [x] Http server (missing SSL/TLS support)
 - [x] Websocket server
 - [ ] WebSocket client
 - [ ] Http client
