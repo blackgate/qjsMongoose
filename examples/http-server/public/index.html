@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>qjsMongoose demo</title>
+    <script>
+        const ws = new WebSocket(`ws://${window.location.host}/websocket`);
+
+        function addToLog(msg) {
+            const entry = document.createElement("div");
+            entry.innerText = msg;
+            document.getElementById("ws-log").append(entry);
+        }
+
+        function sendMessage() {
+            const txt = document.getElementById("message-txt").value;
+            ws.send(txt);
+            addToLog(`Sent: ${txt}`);
+        }
+
+        ws.addEventListener("message", function (msg) {
+            addToLog(`Received: ${msg.data}`);
+        });
+    </script>
+</head>
+<body>
+    <h1>qjsMongoose demo</h1>
+    <div>
+        <div>
+            <input type="text" placeholder="Message" id="message-txt">
+            <button type="button" id="send-msg" onclick="sendMessage()">Send</button>
+        </div>
+        <div id="ws-log"></div>
+    </div>
+</body>
+</html>
