@@ -60,10 +60,24 @@ static JSValue mgMqttMsgGetConnection(JSContext *ctx, JSValueConst this_val)
     return JS_DupValue(ctx, state->jsConnection);
 }
 
+static JSValue mgMqttMsgGetQos(JSContext *ctx, JSValueConst this_val)
+{
+    mgMqttMsgObj *state = getMgMqttMsgObj(this_val);
+    return JS_NewInt32(ctx, state->msg->qos);
+}
+
+static JSValue mgMqttMsgGetCommand(JSContext *ctx, JSValueConst this_val)
+{
+    mgMqttMsgObj *state = getMgMqttMsgObj(this_val);
+    return JS_NewInt32(ctx, state->msg->cmd);
+}
+
 static JSCFunctionListEntry mgMqttMsgClassFuncs[] = {
     JS_CGETSET_DEF("message", mgMqttMsgGetMessage, NULL),
     JS_CGETSET_DEF("topic", mgMqttMsgGetTopic, NULL),
-    JS_CGETSET_DEF("connection", mgMqttMsgGetConnection, NULL)
+    JS_CGETSET_DEF("connection", mgMqttMsgGetConnection, NULL),
+    JS_CGETSET_DEF("command", mgMqttMsgGetCommand, NULL),
+    JS_CGETSET_DEF("qos", mgMqttMsgGetQos, NULL)
 };
 
 JSFullClassDef mgMqttMsgClass = {

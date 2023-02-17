@@ -1,5 +1,5 @@
 import { MongooseManager } from '../build/libqjsMongoose.so';
-import { setInterval } from './utils.js';
+import { setInterval, clearInterval } from './utils.js';
 import { match } from './pathToRegEx.js';
 
 const SNTP_UPDATE_INTERVAL = 3600 * 1000; // 1 hour
@@ -108,30 +108,56 @@ function wsResponse(conn) {
 }
 
 function mqttClient(srv, url, opts) {
-    const mqttClient = srv.createMqttClient(url, opts);
+    let { autoReconnect = true, ...otherOpts } = opts;
 
     const handlers = {
         onOpen: [],
+        onClose: [],
         onMessage: []
     }
 
-    mqttClient.onOpen = () => {
-        for (let h of handlers.onOpen) h();
+    let mqttClient = null;
+
+    function initMqttClient() {
+        mqttClient = srv.createMqttClient(url, otherOpts);
+
+        mqttClient.onOpen = () => {
+            for (let h of handlers.onOpen) h();
+        }
+
+        mqttClient.onClose = () => {
+            for (let h of handlers.onClose) h();
+            if (autoReconnect) initMqttClient();
+        }
+
+        mqttClient.onMessage = (m) => {
+            for (let h of handlers.onMessage) h(m);
+        }
     }
 
-    mqttClient.onMessage = (m) => {
-        for (let h of handlers.onMessage) h(m);
-    }
+    initMqttClient();
+
+    const pingTimer = setInterval(() => {
+        mqttClient.ping();
+    }, 15000);
 
     return {
         onOpen(fn) {
             handlers.onOpen.push(fn);
         },
+        onClose(fn) {
+            handlers.onClose.push(fn);
+        },
         onMessage(fn) {
             handlers.onMessage.push(fn);
         },
         subscribe: (topic) => mqttClient.subscribe(topic),
-        publish: (topic, message) => mqttClient.publish(topic, message)
+        publish: (topic, message) => mqttClient.publish(topic, message),
+        disconnect: () => {
+            autoReconnect = false;
+            mqttClient.disconnect();
+            clearInterval(pingTimer);
+        }
     }
 }
 

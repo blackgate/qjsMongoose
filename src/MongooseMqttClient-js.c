@@ -5,6 +5,7 @@
 enum {
     MG_MQTT_CLIENT_EVENT_ON_OPEN,
     MG_MQTT_CLIENT_EVENT_ON_CLOSE,
+    MG_MQTT_CLIENT_EVENT_ON_CMD,
     MG_MQTT_CLIENT_EVENT_ON_MESSAGE,
     MG_MQTT_CLIENT_EVENT_MAX,
 };
@@ -51,8 +52,14 @@ static void mgMqttClientCb(struct mg_connection *c, int ev, void *ev_data, void 
         JSValue fn = state->events[MG_MQTT_CLIENT_EVENT_ON_OPEN];
         if (JS_IsFunction(state->ctx, fn))
             JS_Call(state->ctx, fn, JS_UNDEFINED, 0, NULL);
+    } else if (ev == MG_EV_MQTT_CMD) {
+        struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+        JSValue jsMsg = mgMqttMsgCreate(state->ctx, c, mm);
+        JSValue fn = state->events[MG_MQTT_CLIENT_EVENT_ON_CMD];
+        if (JS_IsFunction(state->ctx, fn))
+            JS_Call(state->ctx, fn, JS_UNDEFINED, 1, &jsMsg);
+        JS_FreeValue(state->ctx, jsMsg);
     } else if (ev == MG_EV_MQTT_MSG) {
-        // When we get echo response, print it
         struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
         JSValue jsMsg = mgMqttMsgCreate(state->ctx, c, mm);
         JSValue fn = state->events[MG_MQTT_CLIENT_EVENT_ON_MESSAGE];
@@ -159,11 +166,32 @@ static JSValue mgMqttClientPublish(
     return JS_UNDEFINED;
 }
 
+static JSValue mgMqttClientPing(
+    JSContext *ctx, JSValueConst this_val,
+    int argc, JSValueConst *argv)
+{
+    mgMqttClientObj *state = getMgMqttClientObj(this_val);
+    mg_mqtt_ping(state->conn);
+    return JS_UNDEFINED;
+}
+
+static JSValue mgMqttClientDisconnect(
+    JSContext *ctx, JSValueConst this_val,
+    int argc, JSValueConst *argv)
+{
+    mgMqttClientObj *state = getMgMqttClientObj(this_val);
+    mg_mqtt_disconnect(state->conn);
+    return JS_UNDEFINED;
+}
+
 static JSCFunctionListEntry mgMqttClientClassFuncs[] = {
     JS_CGETSET_MAGIC_DEF("onOpen", mgMqttClientEventGet, mgMqttClientEventSet, MG_MQTT_CLIENT_EVENT_ON_OPEN),
-    JS_CGETSET_MAGIC_DEF("onClose", mgMqttClientEventGet, mgMqttClientEventSet, MG_MQTT_CLIENT_EVENT_ON_OPEN),
+    JS_CGETSET_MAGIC_DEF("onClose", mgMqttClientEventGet, mgMqttClientEventSet, MG_MQTT_CLIENT_EVENT_ON_CLOSE),
+    JS_CGETSET_MAGIC_DEF("onCommand", mgMqttClientEventGet, mgMqttClientEventSet, MG_MQTT_CLIENT_EVENT_ON_CMD),
     JS_CGETSET_MAGIC_DEF("onMessage", mgMqttClientEventGet, mgMqttClientEventSet, MG_MQTT_CLIENT_EVENT_ON_MESSAGE),
     JS_CFUNC_DEF("subscribe", 1, mgMqttClientSubscribe),
+    JS_CFUNC_DEF("disconnect", 1, mgMqttClientDisconnect),
+    JS_CFUNC_DEF("ping", 0, mgMqttClientPing),
     JS_CFUNC_DEF("publish", 2, mgMqttClientPublish)
 };
 
