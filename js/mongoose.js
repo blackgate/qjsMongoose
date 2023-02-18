@@ -121,12 +121,17 @@ function mqttClient(srv, url, opts) {
     function initMqttClient() {
         mqttClient = srv.createMqttClient(url, otherOpts);
 
+        const pingTimer = setInterval(() => {
+            mqttClient.ping();
+        }, 15000);
+
         mqttClient.onOpen = () => {
             for (let h of handlers.onOpen) h();
         }
 
         mqttClient.onClose = () => {
             for (let h of handlers.onClose) h();
+            clearInterval(pingTimer);
             if (autoReconnect) initMqttClient();
         }
 
@@ -136,10 +141,6 @@ function mqttClient(srv, url, opts) {
     }
 
     initMqttClient();
-
-    const pingTimer = setInterval(() => {
-        mqttClient.ping();
-    }, 15000);
 
     return {
         onOpen(fn) {
@@ -156,7 +157,6 @@ function mqttClient(srv, url, opts) {
         disconnect: () => {
             autoReconnect = false;
             mqttClient.disconnect();
-            clearInterval(pingTimer);
         }
     }
 }
